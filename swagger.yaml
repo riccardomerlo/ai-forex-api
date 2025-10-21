@@ -1,19 +1,24 @@
 openapi: 3.0.0
 info:
-  title: Express TypeScript API
-  description: API documentation for Express TypeScript server
+  title: Market Prediction Agent API
+  description: AI-powered market prediction system with agentic capabilities
   version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+
 servers:
-  - url: http://localhost:3000
+  - url: http://localhost:3000/api
     description: Development server
+
 paths:
   /health:
     get:
-      summary: Health check endpoint
-      description: Returns the health status of the API
+      summary: Health check
+      description: Returns API health status
       responses:
         '200':
-          description: Successful response
+          description: API is healthy
           content:
             application/json:
               schema:
@@ -27,23 +32,118 @@ paths:
                     format: date-time
                   uptime:
                     type: number
-  /api/health:
-    get:
-      summary: API health check endpoint
-      description: Returns the health status of the API
+                    example: 1234.56
+
+  /predict:
+    post:
+      summary: Generate market prediction
+      description: Uses AI agents to analyze market data and generate predictions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - symbol
+              properties:
+                symbol:
+                  type: string
+                  description: Stock symbol to analyze
+                  example: AAPL
+                strategy:
+                  type: string
+                  enum: [comprehensive, technical, sentiment, momentum]
+                  default: comprehensive
+                timePreference:
+                  type: object
+                  properties:
+                    macro:
+                      type: string
+                      example: 2_weeks
+                    micro:
+                      type: string
+                      example: 3_days
+                riskTolerance:
+                  type: string
+                  enum: [low, medium, high]
+                  default: medium
+
       responses:
         '200':
-          description: Successful response
+          description: Prediction generated successfully
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  status:
+                  success:
+                    type: boolean
+                    example: true
+                  symbol:
                     type: string
-                    example: OK
-                  timestamp:
-                    type: string
-                    format: date-time
-                  uptime:
-                    type: number
+                    example: AAPL
+                  prediction:
+                    type: object
+                    properties:
+                      macroTrend:
+                        type: object
+                        properties:
+                          direction:
+                            type: string
+                            enum: [bullish, bearish, neutral, consolidation]
+                          confidence:
+                            type: number
+                            minimum: 0
+                            maximum: 1
+                          timeframe:
+                            type: string
+                          rationale:
+                            type: string
+                      microTrend:
+                        type: object
+                        properties:
+                          direction:
+                            type: string
+                            enum: [bullish, bearish, neutral, consolidation_bullish, consolidation_bearish]
+                          confidence:
+                            type: number
+                            minimum: 0
+                            maximum: 1
+                          timeframe:
+                            type: string
+                          expectedAction:
+                            type: string
+                  agentMetadata:
+                    type: object
+                    properties:
+                      analysisStrategy:
+                        type: string
+                      toolsUsed:
+                        type: array
+                        items:
+                          type: string
+                      dataSourcesAnalyzed:
+                        type: array
+                        items:
+                          type: string
+                      reasoningSteps:
+                        type: number
+                      totalAnalysisTime:
+                        type: string
+
+        '400':
+          description: Invalid request parameters
+        '500':
+          description: Internal server error
+
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        success:
+          type: boolean
+          example: false

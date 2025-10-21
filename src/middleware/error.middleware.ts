@@ -1,33 +1,53 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../utils/logger';
 
-export interface CustomError extends Error {
-    statusCode?: number;
-    status?: string;
+export class AppError extends Error {
+  constructor(
+    public statusCode: number,
+    public message: string,
+    public isOperational = true
+  ) {
+    super(message);
+    Object.setPrototypeOf(this, AppError.prototype);
+  }
 }
 
-export const errorHandler = (
-    err: CustomError,
-    req: Request,
-    res: Response,
-    next: NextFunction
+export const errorMiddleware = (
+  error: Error | AppError,
+  req: Request,
+  res: Response,
+  next: NextFunction
 ) => {
-    err.statusCode = err.statusCode || 500;
-    err.status = err.status || 'error';
+  if (res.headersSent) {
+    return next(error);
+  }
 
-    logger.error({
-        error: err,
-        request: {
-            method: req.method,
-            url: req.url,
-            headers: req.headers,
-            body: req.body,
-        },
-    });
+  // Log error
+  logger.error('Unhandled Error', {
+    error: error.message,
+    stack: error.stack,
+    url: req.url,
+    method: req.method,
+  });
 
-    res.status(err.statusCode).json({
-        status: err.status,
-        message: err.message,
-        ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+  // AppError handling
+  if (error instanceof AppError) {
+    return res.status(error.statusCode).json({
+      error: error.message,
+      success: false,
+      ...(process.env.NODE_ENV === 'development' && { stack: error.stack }),
     });
+  }
+
+  // Default error handling
+  const statusCode = 500;
+  const message = process.env.NODE_ENV === 'production' 
+    ? 'Internal server error' 
+    : error.message;
+
+  res.status(statusCode).json({
+    error: message,
+    success: false,
+    ...(process.env.NODE_ENV === 'development' && { stack: error.stack }),
+  });
 };
