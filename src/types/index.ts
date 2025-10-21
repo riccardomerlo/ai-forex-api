@@ -61,7 +61,7 @@ export const AgentActionSchema = z.object({
   action: z.object({
     type: z.enum(['TOOL_USE', 'FINAL_ANSWER']),
     toolName: z.string().optional(),
-    parameters: z.record(z.any()).optional(),
+    parameters: z.record(z.any(), z.any()).optional(),
     content: z.any().optional(),
   }),
 });

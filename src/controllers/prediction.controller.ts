@@ -17,7 +17,7 @@ export const predictionController = async (req: Request, res: Response) => {
     // Validate request
     const validationResult = PredictionRequestSchema.safeParse(req.body);
     if (!validationResult.success) {
-      throw new AppError(400, `Invalid request: ${validationResult.error.errors[0]?.message}`);
+      throw new AppError(400, `Invalid request: ${validationResult.error.message}`);
     }
 
     const { symbol, strategy, timePreference, riskTolerance } = validationResult.data;
