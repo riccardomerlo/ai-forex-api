@@ -1,0 +1,49 @@
+openapi: 3.0.0
+info:
+  title: Express TypeScript API
+  description: API documentation for Express TypeScript server
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000
+    description: Development server
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      description: Returns the health status of the API
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: OK
+                  timestamp:
+                    type: string
+                    format: date-time
+                  uptime:
+                    type: number
+  /api/health:
+    get:
+      summary: API health check endpoint
+      description: Returns the health status of the API
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: OK
+                  timestamp:
+                    type: string
+                    format: date-time
+                  uptime:
+                    type: number
