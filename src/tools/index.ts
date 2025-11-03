@@ -1,9 +1,26 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import { logger } from '../utils/logger';
+import type {
+  MarketDataPoint,
+  MarketDataResult,
+  NewsArticle,
+  NewsSentimentResult,
+  TechnicalPattern,
+  TechnicalAnalysisResult,
+  SupportResistanceResult,
+  TimeframeAlignment,
+  MarketRegimeResult,
+} from '../types';
+
+export { MarketDataStore } from './marketDataStore';
 
 class MockDataService {
-  async getMarketData(params: { symbol: string; timeframes?: string[]; limit?: number }): Promise<any> {
+  async getMarketData(params: {
+    symbol: string;
+    timeframes?: string[];
+    limit?: number;
+  }): Promise<MarketDataResult> {
     logger.info('Fetching market data', { params });
     await new Promise(resolve => setTimeout(resolve, 100));
     
@@ -15,7 +32,11 @@ class MockDataService {
     };
   }
 
-  async getNewsSentiment(params: { symbol: string; lookbackHours?: number; sentimentThreshold?: number }): Promise<any> {
+  async getNewsSentiment(params: {
+    symbol: string;
+    lookbackHours?: number;
+    sentimentThreshold?: number;
+  }): Promise<NewsSentimentResult> {
     logger.info('Fetching news sentiment', { params });
     await new Promise(resolve => setTimeout(resolve, 150));
     
@@ -28,7 +49,10 @@ class MockDataService {
     };
   }
 
-  async analyzeTechnicalPatterns(params: { symbol: string; primaryTimeframe?: string }): Promise<any> {
+  async analyzeTechnicalPatterns(params: {
+    symbol: string;
+    primaryTimeframe?: string;
+  }): Promise<TechnicalAnalysisResult> {
     logger.info('Analyzing technical patterns', { params });
     await new Promise(resolve => setTimeout(resolve, 200));
     
@@ -49,7 +73,10 @@ class MockDataService {
     };
   }
 
-  async detectSupportResistance(params: { symbol: string; sensitivity?: number }): Promise<any> {
+  async detectSupportResistance(params: {
+    symbol: string;
+    sensitivity?: number;
+  }): Promise<SupportResistanceResult> {
     return {
       symbol: params.symbol,
       support: [180.50, 178.20, 175.80],
@@ -59,7 +86,10 @@ class MockDataService {
     };
   }
 
-  async compareTimeframes(params: { symbol: string; timeframes?: string[] }): Promise<any> {
+  async compareTimeframes(params: {
+    symbol: string;
+    timeframes?: string[];
+  }): Promise<TimeframeAlignment> {
     return {
       symbol: params.symbol,
       alignment: 'mostly_aligned',
@@ -69,7 +99,10 @@ class MockDataService {
     };
   }
 
-  async assessMarketRegime(params: { symbol: string; primaryTimeframe?: string }): Promise<any> {
+  async assessMarketRegime(params: {
+    symbol: string;
+    primaryTimeframe?: string;
+  }): Promise<MarketRegimeResult> {
     return {
       symbol: params.symbol,
       regime: 'trending_bullish',
@@ -79,7 +112,7 @@ class MockDataService {
     };
   }
 
-  private generateMockPriceData(symbol: string): any[] {
+  private generateMockPriceData(symbol: string): MarketDataPoint[] {
     const basePrice = symbol === 'AAPL' ? 185 : 450;
     return [
       { timeframe: '1h', open: basePrice, high: basePrice + 2, low: basePrice - 1, close: basePrice + 1, volume: 100000 },
@@ -88,7 +121,7 @@ class MockDataService {
     ];
   }
 
-  private generateMockNews(symbol: string): any[] {
+  private generateMockNews(symbol: string): NewsArticle[] {
     return [
       {
         headline: `${symbol} Shows Strong Quarterly Results`,
@@ -105,7 +138,7 @@ class MockDataService {
     ];
   }
 
-  private generateMockPatterns(): any[] {
+  private generateMockPatterns(): TechnicalPattern[] {
     return [
       { name: 'Uptrend Channel', confidence: 0.75, timeframe: '1d' },
       { name: 'Support Test', confidence: 0.65, timeframe: '4h' },
@@ -128,7 +161,11 @@ export const aiSdkTools = {
       timeframes: z.array(z.string()).optional().describe('Timeframes to fetch (1h, 4h, 1d, 1w)'),
       limit: z.number().optional().describe('Number of candles to fetch')
     }),
-    execute: async ({ symbol, timeframes, limit }) => {
+    execute: async ({ symbol, timeframes, limit }: {
+      symbol: string;
+      timeframes?: string[];
+      limit?: number;
+    }): Promise<MarketDataResult> => {
       return await mockService.getMarketData({ symbol, timeframes, limit });
     }
   }),
@@ -140,7 +177,11 @@ export const aiSdkTools = {
       lookbackHours: z.number().optional().describe('Hours to look back for news'),
       sentimentThreshold: z.number().optional().describe('Minimum sentiment threshold')
     }),
-    execute: async ({ symbol, lookbackHours, sentimentThreshold }) => {
+    execute: async ({ symbol, lookbackHours, sentimentThreshold }: {
+      symbol: string;
+      lookbackHours?: number;
+      sentimentThreshold?: number;
+    }): Promise<NewsSentimentResult> => {
       return await mockService.getNewsSentiment({ symbol, lookbackHours, sentimentThreshold });
     }
   }),
@@ -151,7 +192,10 @@ export const aiSdkTools = {
       symbol: z.string().describe('Trading symbol to analyze'),
       primaryTimeframe: z.string().optional().describe('Primary timeframe for analysis')
     }),
-    execute: async ({ symbol, primaryTimeframe }) => {
+    execute: async ({ symbol, primaryTimeframe }: {
+      symbol: string;
+      primaryTimeframe?: string;
+    }): Promise<TechnicalAnalysisResult> => {
       return await mockService.analyzeTechnicalPatterns({ symbol, primaryTimeframe });
     }
   }),
@@ -162,7 +206,10 @@ export const aiSdkTools = {
       symbol: z.string().describe('Trading symbol'),
       sensitivity: z.number().optional().describe('Sensitivity level for detection')
     }),
-    execute: async ({ symbol, sensitivity }) => {
+    execute: async ({ symbol, sensitivity }: {
+      symbol: string;
+      sensitivity?: number;
+    }): Promise<SupportResistanceResult> => {
       return await mockService.detectSupportResistance({ symbol, sensitivity });
     }
   }),
@@ -173,7 +220,10 @@ export const aiSdkTools = {
       symbol: z.string().describe('Trading symbol'),
       timeframes: z.array(z.string()).optional().describe('Timeframes to compare')
     }),
-    execute: async ({ symbol, timeframes }) => {
+    execute: async ({ symbol, timeframes }: {
+      symbol: string;
+      timeframes?: string[];
+    }): Promise<TimeframeAlignment> => {
       return await mockService.compareTimeframes({ symbol, timeframes });
     }
   }),
@@ -184,7 +234,10 @@ export const aiSdkTools = {
       symbol: z.string().describe('Trading symbol'),
       primaryTimeframe: z.string().optional().describe('Primary timeframe for regime assessment')
     }),
-    execute: async ({ symbol, primaryTimeframe }) => {
+    execute: async ({ symbol, primaryTimeframe }: {
+      symbol: string;
+      primaryTimeframe?: string;
+    }): Promise<MarketRegimeResult> => {
       return await mockService.assessMarketRegime({ symbol, primaryTimeframe });
     }
   })

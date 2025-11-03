@@ -1,27 +1,21 @@
-interface Fact {
-  value: any;
-  source: string;
-  confidence: number;
-  timestamp: Date;
-  corroboratingEvidence: any[];
-}
+import type {
+  Fact,
+  Hypothesis,
+  Evidence,
+  AnalysisContext,
+  AnalysisHistoryEntry,
+  ConfidenceMetrics,
+  MemoryInterface,
+} from '../types';
 
-interface Hypothesis {
-  description: string;
-  supportingFacts: string[];
-  testPlan: any[];
-  status: 'active' | 'confirmed' | 'rejected';
-  confidence: number;
-}
-
-export class WorkingMemory {
+export class WorkingMemory implements MemoryInterface {
   private facts: Map<string, Fact> = new Map();
   private hypotheses: Hypothesis[] = [];
-  private evidence: any[] = [];
+  private evidence: Evidence[] = [];
   private confidenceLevels: Map<string, number> = new Map();
-  private analysisHistory: any[] = [];
+  private analysisHistory: AnalysisHistoryEntry[] = [];
 
-  storeFact(key: string, value: any, source: string, confidence: number = 0.8): void {
+  storeFact(key: string, value: unknown, source: string, confidence: number = 0.8): void {
     this.facts.set(key, {
       value,
       source,
@@ -40,7 +34,7 @@ export class WorkingMemory {
     });
   }
 
-  addEvidence(factKey: string, evidence: any): void {
+  addEvidence(factKey: string, evidence: unknown): void {
     if (this.facts.has(factKey)) {
       const fact = this.facts.get(factKey)!;
       fact.corroboratingEvidence.push(evidence);
@@ -54,11 +48,11 @@ export class WorkingMemory {
     }
   }
 
-  formulateHypothesis(description: string, supportingFacts: string[], testPlan: any[]): void {
+  formulateHypothesis(description: string, supportingFacts: string[], testPlan: unknown[]): void {
     const hypothesis: Hypothesis = {
       description,
       supportingFacts,
-      testPlan,
+      testPlan: testPlan as Hypothesis['testPlan'],
       status: 'active',
       confidence: 0.5
     };
@@ -89,13 +83,13 @@ export class WorkingMemory {
     return Math.min(baseConfidence + evidenceBoost, 1.0);
   }
 
-  getContext(): any {
+  getContext(): AnalysisContext {
     const confirmedFacts = Array.from(this.facts.entries())
       .filter(([_, fact]) => fact.confidence > 0.7)
       .reduce((acc, [key, fact]) => {
         acc[key] = fact.value;
         return acc;
-      }, {} as Record<string, any>);
+      }, {} as Record<string, unknown>);
 
     const activeHypotheses = this.hypotheses.filter(h => h.status === 'active');
 
@@ -113,11 +107,11 @@ export class WorkingMemory {
     };
   }
 
-  getAnalysisHistory(): any[] {
+  getAnalysisHistory(): AnalysisHistoryEntry[] {
     return [...this.analysisHistory];
   }
 
-  getConfidenceMetrics(): any {
+  getConfidenceMetrics(): ConfidenceMetrics {
     const factConfidences = Array.from(this.facts.values()).map(f => f.confidence);
     const avgConfidence = factConfidences.length > 0 
       ? factConfidences.reduce((a, b) => a + b, 0) / factConfidences.length 

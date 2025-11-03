@@ -1,22 +1,19 @@
 import { generateText } from 'ai';
 import { LanguageModel } from 'ai';
 import { WorkingMemory } from './WorkingMemory';
-import { PredictionResponse, AgentAction } from '../types';
+import type {
+  PredictionResponse,
+  UserPreferences,
+  AnalysisStep,
+  AnalysisPlan,
+  AnalysisHistoryEntry,
+  ConfidenceMetrics,
+  ToolsMap,
+  OrchestratorInterface,
+} from '../types';
 import { logger } from '../utils/logger';
 
-interface AnalysisStep {
-  type: 'data_collection' | 'technical_analysis' | 'sentiment_analysis' | 'synthesis';
-  tool: string;
-  parameters: Record<string, any>;
-  expectedInsight: string;
-}
-
-interface AnalysisPlan {
-  rationale: string;
-  steps: AnalysisStep[];
-}
-
-export class AdvancedOrchestrator {
+export class AdvancedOrchestrator implements OrchestratorInterface {
   private workingMemory: WorkingMemory;
   private toolsUsed: string[] = [];
   private reasoningSteps: number = 0;
@@ -24,21 +21,20 @@ export class AdvancedOrchestrator {
 
   constructor(
     private model: LanguageModel,
-    private tools: Record<string, any>
+    private tools: ToolsMap
   ) {
     this.workingMemory = new WorkingMemory();
   }
 
   async generateMarketPrediction(
     symbol: string,
-    userPreferences: any
+    userPreferences: UserPreferences
   ): Promise<PredictionResponse> {
     this.analysisStartTime = Date.now();
     this.toolsUsed = [];
     this.reasoningSteps = 0;
 
     try {
-      const objective = this.buildObjective(symbol, userPreferences);
       const analysisPlan = await this.formulateAnalysisPlan(symbol, userPreferences);
 
       logger.info('Starting analysis plan', { symbol, plan: analysisPlan });
@@ -56,23 +52,23 @@ export class AdvancedOrchestrator {
       }
 
       // Synthesize final prediction
-      const prediction = await this.synthesizePrediction(symbol);
+      const predictionData = await this.synthesizePrediction(symbol);
 
       return {
         success: true,
         symbol,
-        prediction,
+        prediction: predictionData as PredictionResponse['prediction'],
         agentMetadata: this.getAgentMetadata(),
       };
 
     } catch (error) {
       logger.error('Analysis failed', { error, symbol });
       // Fallback prediction
-      return await this.generateFallbackPrediction(symbol);
+      return await this.generateFallbackPrediction(symbol) as PredictionResponse;
     }
   }
 
-  private buildObjective(symbol: string, preferences: any): string {
+  private buildObjective(symbol: string, preferences: UserPreferences): string {
     return `
       Provide a comprehensive market prediction for ${symbol} that includes:
       - Macro trend direction (next 1-4 weeks)
@@ -86,29 +82,7 @@ export class AdvancedOrchestrator {
     `;
   }
 
-  private async formulateAnalysisPlan(symbol: string, preferences: any): Promise<AnalysisPlan> {
-    const prompt = `
-      Create an analysis plan for ${symbol} market prediction.
-      
-      Available tools: ${Object.keys(this.tools).join(', ')}
-      User preferences: ${JSON.stringify(preferences)}
-
-      Consider what data and analysis would be most relevant for this prediction.
-      Return a structured plan with steps.
-
-      Respond with JSON:
-      {
-        "rationale": "Why this plan was chosen",
-        "steps": [
-          {
-            "type": "data_collection|technical_analysis|sentiment_analysis|synthesis",
-            "tool": "tool_name",
-            "parameters": {},
-            "expectedInsight": "What we hope to learn"
-          }
-        ]
-      }
-    `;
+  private async formulateAnalysisPlan(symbol: string, _preferences: UserPreferences): Promise<AnalysisPlan> {
 
     // In a real implementation, this would call the AI model
     // For now, return a default plan
@@ -137,7 +111,7 @@ export class AdvancedOrchestrator {
     };
   }
 
-  private async executeAnalysisStep(step: AnalysisStep, symbol: string): Promise<any> {
+  private async executeAnalysisStep(step: AnalysisStep, symbol: string): Promise<unknown> {
     const tool = this.tools[step.tool];
     if (!tool) {
       throw new Error(`Tool ${step.tool} not found`);
@@ -149,12 +123,11 @@ export class AdvancedOrchestrator {
     try {
       const result = await generateText({
         model: this.model,
-        tools: { [step.tool]: tool },
-        prompt: `Execute analysis step: ${step.type}. Expected insight: ${step.expectedInsight}. Parameters: ${JSON.stringify(enhancedParams)}`,
-        maxSteps: 1
+        tools: { [step.tool]: tool } as never,
+        prompt: `Execute analysis step: ${step.type}. Expected insight: ${step.expectedInsight}. Parameters: ${JSON.stringify(enhancedParams)}`
       });
 
-      const toolResult = result.toolResults?.[0]?.result;
+      const toolResult = (result.toolResults as unknown as Array<{ result: unknown }>)?.[0]?.result;
       if (toolResult) {
         logger.debug('Tool execution completed', { tool: step.tool, params: enhancedParams });
         return toolResult;
@@ -167,7 +140,7 @@ export class AdvancedOrchestrator {
     }
   }
 
-  private handleToolError(step: AnalysisStep, error: any): any {
+  private handleToolError(step: AnalysisStep, error: unknown): unknown {
     logger.error(`Tool ${step.tool} failed, using fallback`, {
       error: error instanceof Error ? error.message : String(error),
       step: step.type
@@ -181,24 +154,28 @@ export class AdvancedOrchestrator {
     };
   }
 
-  private async enhanceParameters(baseParams: any, symbol: string): Promise<any> {
+  private async enhanceParameters(baseParams: unknown, symbol: string): Promise<unknown> {
     // Simple parameter enhancement - in real implementation, this would use AI
     return {
-      ...baseParams,
+      ...(baseParams as Record<string, unknown>),
       symbol,
       timestamp: new Date().toISOString()
     };
   }
 
-  private shouldAdjustPlan(result: any, step: AnalysisStep): boolean {
+  private shouldAdjustPlan(result: unknown, step: AnalysisStep): boolean {
     // Simple heuristic for plan adjustment
-    return result?.error || result?.insufficientData ||
-      (step.type === 'data_collection' && !result?.data?.length);
+    const resultObj = result as Record<string, unknown> & { error?: unknown; insufficientData?: unknown; data?: unknown[] };
+    const hasError = Boolean(resultObj?.error);
+    const hasInsufficientData = Boolean(resultObj?.insufficientData);
+    const isEmptyDataCollection = step.type === 'data_collection' && (!Array.isArray(resultObj?.data) || resultObj?.data?.length === 0);
+    return hasError || hasInsufficientData || isEmptyDataCollection;
   }
 
-  private async adjustAnalysisPlan(plan: AnalysisPlan, result: any): Promise<void> {
+  private async adjustAnalysisPlan(plan: AnalysisPlan, result: unknown): Promise<void> {
     // Simple plan adjustment - add fallback steps if needed
-    if (result?.error) {
+    const resultObj = result as Record<string, unknown> & { error?: unknown };
+    if (resultObj?.error) {
       plan.steps.push({
         type: 'data_collection',
         tool: 'getMarketData',
@@ -208,10 +185,9 @@ export class AdvancedOrchestrator {
     }
   }
 
-  private async synthesizePrediction(symbol: string): Promise<any> {
+  private async synthesizePrediction(_symbol: string): Promise<unknown> {
     // In real implementation, this would use AI to synthesize all collected data
     // For now, return a mock prediction
-    const context = this.workingMemory.getContext();
 
     return {
       macroTrend: {
@@ -239,7 +215,7 @@ export class AdvancedOrchestrator {
     };
   }
 
-  private async generateFallbackPrediction(symbol: string): Promise<any> {
+  private async generateFallbackPrediction(_symbol: string): Promise<unknown> {
     // Fallback prediction when analysis fails
     return {
       macroTrend: {
@@ -276,7 +252,6 @@ export class AdvancedOrchestrator {
     };
   }
 
-  // Public methods for state inspection
   getCurrentState() {
     return {
       workingMemory: this.workingMemory.getContext(),
@@ -285,19 +260,19 @@ export class AdvancedOrchestrator {
     };
   }
 
-  getReasoningChain() {
+  getReasoningChain(): AnalysisHistoryEntry[] {
     return this.workingMemory.getAnalysisHistory();
   }
 
-  getToolsUsed() {
+  getToolsUsed(): string[] {
     return this.toolsUsed;
   }
 
-  getAnalysisDuration() {
+  getAnalysisDuration(): number {
     return Date.now() - this.analysisStartTime;
   }
 
-  getConfidenceMetrics() {
+  getConfidenceMetrics(): ConfidenceMetrics {
     return this.workingMemory.getConfidenceMetrics();
   }
 }

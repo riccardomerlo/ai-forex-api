@@ -4,7 +4,8 @@ import { AppError } from '../middleware/error.middleware';
 import { AdvancedOrchestrator } from '../agents/AdvancedOrchestrator';
 import { aiSdkTools } from '../tools';
 import { openai } from '@ai-sdk/openai';
-import { config } from '../config';
+import { MarketDataStore } from '../tools/marketDataStore';
+import path from 'node:path';
 
 const model = openai('gpt-4o-mini');
 
@@ -28,11 +29,31 @@ export const predictionController = async (req: Request, res: Response) => {
     });
 
     res.json(prediction);
-
   } catch (error) {
     if (error instanceof AppError) {
       throw error;
     }
-    throw new AppError(500, `Prediction failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new AppError(
+      500,
+      `Prediction failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 };
+
+export const marketStorePromise = MarketDataStore.fromFolder(
+  process.env.XAU_CSV_DIR ?? path.resolve(process.cwd(), 'data', 'xauusd'),
+  'XAUUSD'
+);
+
+export async function getMarketSnapshot(req: Request, res: Response) {
+  const store = await marketStorePromise;
+  const latest = store.getLatest();
+  const sma20 = store.getSMA(20);
+  const rsi14 = store.getRSI(14);
+  res.json({
+    latest,
+    sma20,
+    rsi14,
+    summary: store.getSummary(),
+  });
+}

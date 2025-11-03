@@ -10,7 +10,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix"
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "load:xau": "node dist/tools/loadXAU.js --dir ./data/xauusd"
   },
   "dependencies": {
     "express": "^5.1.0",
@@ -47,7 +48,13 @@
     "eslint": "^9.39.1",
     "prettier": "^3.6.2"
   },
-  "keywords": ["trading", "ai", "agent", "prediction", "market-analysis"],
+  "keywords": [
+    "trading",
+    "ai",
+    "agent",
+    "prediction",
+    "market-analysis"
+  ],
   "author": "R7k1",
   "license": "MIT"
 }
