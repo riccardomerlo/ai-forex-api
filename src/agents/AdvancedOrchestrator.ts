@@ -1,13 +1,8 @@
-import { createGoogleGenerativeAI } from '@ai-sdk/google'; // Fixed import
+import { generateText } from 'ai';
+import { LanguageModel } from 'ai';
 import { WorkingMemory } from './WorkingMemory';
 import { PredictionResponse, AgentAction } from '../types';
 import { logger } from '../utils/logger';
-
-interface Tool {
-  description: string;
-  parameters: Record<string, any>;
-  execute: (params: any) => Promise<any>;
-}
 
 interface AnalysisStep {
   type: 'data_collection' | 'technical_analysis' | 'sentiment_analysis' | 'synthesis';
@@ -28,8 +23,8 @@ export class AdvancedOrchestrator {
   private analysisStartTime: number = 0;
 
   constructor(
-    private ai: ReturnType<typeof createGoogleGenerativeAI>, // Updated type
-    private tools: Record<string, Tool>
+    private model: LanguageModel,
+    private tools: Record<string, any>
   ) {
     this.workingMemory = new WorkingMemory();
   }
@@ -149,31 +144,37 @@ export class AdvancedOrchestrator {
     }
 
     this.toolsUsed.push(step.tool);
-
-    // Enhance parameters with current context
     const enhancedParams = await this.enhanceParameters(step.parameters, symbol);
 
     try {
-      const result = await tool.execute(enhancedParams);
-      logger.debug('Tool execution completed', { tool: step.tool, params: enhancedParams });
-      return result;
+      const result = await generateText({
+        model: this.model,
+        tools: { [step.tool]: tool },
+        prompt: `Execute analysis step: ${step.type}. Expected insight: ${step.expectedInsight}. Parameters: ${JSON.stringify(enhancedParams)}`,
+        maxSteps: 1
+      });
+
+      const toolResult = result.toolResults?.[0]?.result;
+      if (toolResult) {
+        logger.debug('Tool execution completed', { tool: step.tool, params: enhancedParams });
+        return toolResult;
+      }
+      
+      return result.text;
     } catch (error) {
       logger.warn('Tool execution failed', { tool: step.tool, error });
-      // Fixed: Call the method that actually exists
-      return await this.handleToolError(step, error);
+      return this.handleToolError(step, error);
     }
   }
 
-  // Fixed: Added the missing method implementation
-  private async handleToolError(step: AnalysisStep, error: any): Promise<any> {
+  private handleToolError(step: AnalysisStep, error: any): any {
     logger.error(`Tool ${step.tool} failed, using fallback`, {
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
       step: step.type
     });
 
-    // Return a basic fallback result to allow continuation
     return {
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
       fallback: true,
       tool: step.tool,
       timestamp: new Date().toISOString()

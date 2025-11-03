@@ -2,15 +2,13 @@ import { Request, Response } from 'express';
 import { PredictionRequestSchema } from '../types';
 import { AppError } from '../middleware/error.middleware';
 import { AdvancedOrchestrator } from '../agents/AdvancedOrchestrator';
-import { availableTools } from '../tools';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { aiSdkTools } from '../tools';
+import { openai } from '@ai-sdk/openai';
 import { config } from '../config';
 
-const ai = createGoogleGenerativeAI({
-  apiKey: config.ai.googleApiKey!,
-});
+const model = openai('gpt-4o-mini');
 
-const orchestrator = new AdvancedOrchestrator(ai, availableTools);
+const orchestrator = new AdvancedOrchestrator(model, aiSdkTools);
 
 export const predictionController = async (req: Request, res: Response) => {
   try {

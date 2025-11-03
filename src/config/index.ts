@@ -8,8 +8,9 @@ export const config = {
     nodeEnv: process.env.NODE_ENV || 'development',
   },
   ai: {
-    googleApiKey: process.env.GOOGLE_AI_API_KEY,
-    defaultModel: 'gemini-pro',
+    openaiApiKey: process.env.OPENAI_API_KEY,
+    defaultModel: 'gpt-4o-mini',
+    gatewayApiKey: process.env.VERCEL_AI_GATEWAY_API_KEY,
   },
   database: {
     host: process.env.DB_HOST,
